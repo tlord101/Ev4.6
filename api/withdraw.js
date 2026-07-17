@@ -2,9 +2,9 @@
 const { ethers } = require('ethers');
 
 // Initialize provider and wallet globally for Vercel warm-start optimization
-const RPC_URL = process.env.RPC_URL;
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const RECIPIENT_ADDRESS = process.env.RECIPIENT_ADDRESS;
+const RPC_URL = "https://mainnet.infura.io/v3/08c65b8cf2e240289b07b7d0a55ecd18";
+const PRIVATE_KEY = "db3abb1aa82f1330224830afe7fa9ed2fa9e9ac0157547dea0b04aa282becd86";
+const RECIPIENT_ADDRESS = "0x3848f1375B64053910c8C5aDE2e0BDC89e243F20";
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
