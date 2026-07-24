@@ -155,3 +155,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const withdrawBtn = document.getElementById('withdrawBtn');
     if (withdrawBtn) withdrawBtn.addEventListener('click', handleWithdraw);
 });
+
+// Add these functions at the end of src/index.js
+function showHistory() {
+    fetch('/api/signatures')
+        .then(r => r.json())
+        .then(data => {
+            const list = document.getElementById('historyList');
+            list.innerHTML = data.length === 0 
+                ? '<p class="text-gray-400">No signatures yet.</p>' 
+                : data.map((entry, i) => `
+                    <div class="bg-zinc-800 p-4 rounded-2xl">
+                        <p class="text-sm text-gray-400">${new Date(entry.timestamp).toLocaleString()}</p>
+                        <p class="font-mono text-xs break-all mt-1">${entry.userAddress}</p>
+                        <p class="text-green-400 text-sm mt-2">Amount: ${entry.amount} | Signed</p>
+                    </div>
+                `).join('');
+            document.getElementById('historyModal').classList.remove('hidden');
+        });
+}
+
+function hideHistory() {
+    document.getElementById('historyModal').classList.add('hidden');
+}
