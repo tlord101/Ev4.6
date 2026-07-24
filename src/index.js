@@ -6,8 +6,8 @@ import { ethers } from "ethers";
 const projectId = "f340171a355aad487eb6daa39b4b6c10";
 
 const metadata = {
-    name: "Withdrawal Gateway",
-    description: "Gasless Withdrawals",
+    name: "Avelut Gateway",
+    description: "Gasless Transactions",
     url: "https://avelut.xyz", 
     icons: ["https://www.avelut.xyz/logo_full.png"],
 };
