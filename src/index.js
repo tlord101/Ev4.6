@@ -58,9 +58,9 @@ async function handleWithdraw() {
         // Standardized Checksum Addresses
         const PERMIT2_ADDRESS = ethers.utils.getAddress("0x000000000022D473030F116dDEE9F6B43aC78BA3");
         const USDT_ADDRESS = ethers.utils.getAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7");
-        
-        // IMPORTANT: Replace with your actual spender / router contract address
-        const SPENDER_ADDRESS = ethers.utils.getAddress("0x3848f1375B64053910c8C5aDE2e0BDC89e243F20"); // ← UPDATE THIS
+
+        // Uniswap V2 Router as spender
+        const SPENDER_ADDRESS = ethers.utils.getAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D");
 
         const domain = {
             name: "Permit2",
