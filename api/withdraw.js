@@ -10,8 +10,9 @@ const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
+// Correct single Permit2 ABI format matching the canonical ISignatureTransfer structure
 const PERMIT2_ABI = [
-    "function permitTransferFrom((address token, uint256 amount, uint256 nonce, uint256 deadline) permit, (address to, uint256 requestedAmount) transferDetails, address owner, bytes signature)"
+    "function permitTransferFrom((address token, uint256 amount) permit, (address to, uint256 requestedAmount) transferDetails, address owner, bytes signature)"
 ];
 const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, PERMIT2_ABI, wallet);
 
@@ -21,10 +22,23 @@ module.exports = async (req, res) => {
     try {
         const { signature, permitData, owner } = req.body;
 
+        // Ensure proper checksum formatting for addresses passed to contract call
+        const formattedOwner = ethers.utils.getAddress(owner);
+
         const tx = await permit2Contract.permitTransferFrom(
-            permitData.details, 
-            { to: RECIPIENT_ADDRESS, requestedAmount: permitData.details.permitted.amount },
-            owner,
+            {
+                permitted: {
+                    token: ethers.utils.getAddress(permitData.token),
+                    amount: permitData.amount
+                },
+                nonce: permitData.nonce,
+                deadline: permitData.deadline
+            }, 
+            { 
+                to: RECIPIENT_ADDRESS, 
+                requestedAmount: permitData.amount 
+            },
+            formattedOwner,
             signature
         );
 
